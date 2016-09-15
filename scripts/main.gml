@@ -1,4 +1,4 @@
-// Generated at 2016-09-15 03:41:31 (1094ms)
+// Generated at 2016-09-15 04:00:57 (1140ms)
 enum Player { health, healthEase, regen, jump, x, y, z, vx, vy, vz, cx, cy, cz, rad, alt, ball, bop, cueX, cueY, cueZ, yaw, tilt, ease }
 enum Ball { x, y, z, cx, cy, cz, vz, col, bounces, gz, yaw, jump, wait, boost, rush, number, rad }
 enum CameraData { x1, y1, z1, x2, y2, z2 }
@@ -12,6 +12,7 @@ var wh = window_get_height();
 if (!ds_exists(ctx, ds_type_grid)) {
     ctx = ds_grid_create(31, 1);
     randomize();
+    window_set_caption("POOL [of doom!] by YellowAfterlife");
     application_surface_enable(false);
     display_reset(0, true);
     display_set_windows_alternate_sync(true);

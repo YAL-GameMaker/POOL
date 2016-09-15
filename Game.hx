@@ -161,6 +161,7 @@ class Game {
 			ctx = new GameCtxImpl(); // -> #0
 			//
 			raw("randomize")();
+			raw("window_set_caption")("POOL [of doom!] by YellowAfterlife");
 			raw("application_surface_enable")(false);
 			Display.reset(0, true);
 			raw("display_set_windows_alternate_sync")(true);
