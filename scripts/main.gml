@@ -1,16 +1,16 @@
-// Generated at 2016-09-15 04:00:57 (1140ms)
+// Generated at 2016-09-17 18:25:31 (1155ms)
 enum Player { health, healthEase, regen, jump, x, y, z, vx, vy, vz, cx, cy, cz, rad, alt, ball, bop, cueX, cueY, cueZ, yaw, tilt, ease }
 enum Ball { x, y, z, cx, cy, cz, vz, col, bounces, gz, yaw, jump, wait, boost, rush, number, rad }
 enum CameraData { x1, y1, z1, x2, y2, z2 }
 enum WaveData { wave, left, spawn, next }
 enum GameLevel { water, holes, walls, cover }
-enum GameCtx { menu, player, balls, score, waveData, cameraData, logo, logoColor, logoShadow, logoEase, glyphs, glyphsRaw, ballOuterModel, ballOuterTexture, ballInnerModel, ballInnerTexture, ballColors, ballShadow, ballEye, ballBrow, levelTextures, levelModels, levelOuter, cueModel, cueTexture, mapTable, mapPlayer, mapBall, koSlideIn, koSlideOut, koSlideThru }
+enum GameCtx { menu, player, balls, score, waveData, cameraData, white16, logo, logoColor, logoShadow, logoEase, glyphs, glyphsRaw, ballOuterModel, ballOuterTexture, ballOuterImage, ballInnerModel, ballInnerTexture, ballInnerImage, ballColors, ballShadow, ballEye, ballBrow, levelTextures, levelImages, levelModels, levelOuter, cueModel, cueTexture, cueImage, mapTable, mapPlayer, mapBall, koSlideIn, koSlideOut, koSlideThru }
 var ctx = 0;
-var levelModels, levelTextures, player, camData, waveData, ball, ball2, balls, i, k, n, s, c1, c2, f, f1, f2, vx, vy, vz, vr, dx, dy, dz, df, x1, y1, z1, x2, y2, z2, sf, tx, md;
+var levelModels, levelTextures, player, camData, waveData, ball, ball2, balls, i, k, n, s, c1, c2, f, f1, f2, vx, vy, vz, vr, dx, dy, dz, df, x1, y1, z1, x2, y2, z2, sf, bk, tx, md;
 var ww = window_get_width();
 var wh = window_get_height();
 if (!ds_exists(ctx, ds_type_grid)) {
-    ctx = ds_grid_create(31, 1);
+    ctx = ds_grid_create(36, 1);
     randomize();
     window_set_caption("POOL [of doom!] by YellowAfterlife");
     application_surface_enable(false);
@@ -36,6 +36,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
     ctx[#GameCtx.levelModels, 0] = levelModels;
     levelTextures = ds_list_create();
     ctx[#GameCtx.levelTextures, 0] = levelTextures;
+    ctx[#GameCtx.levelImages, 0] = ds_list_create();
     if (true/*"Font"*/) {
         ctx[#GameCtx.glyphs, 0] = ds_list_create();
         ctx[#GameCtx.glyphsRaw, 0] = ds_list_create();
@@ -366,7 +367,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
         surface_set_target(sf);
         draw_clear(-1);
         surface_reset_target();
-        background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false);
+        ctx[#GameCtx.white16, 0] = background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false);
         for (i = 0; i < 4; i += 1) {
             switch (i) {
                 case 0:
@@ -391,10 +392,12 @@ if (!ds_exists(ctx, ds_type_grid)) {
             }
             surface_set_target(sf);
             draw_clear(c1);
-            draw_background_ext(0, 0, 0, 0.5, 0.5, 0, c2, 1);
-            draw_background_ext(0, 8, 8, 0.5, 0.5, 0, c2, 1);
+            draw_background_ext(ctx[#GameCtx.white16, 0], 0, 0, 0.5, 0.5, 0, c2, 1);
+            draw_background_ext(ctx[#GameCtx.white16, 0], 8, 8, 0.5, 0.5, 0, c2, 1);
             surface_reset_target();
-            levelTextures[|i] = background_get_texture(background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false));
+            bk = background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false);
+            ds_list_set(ctx[#GameCtx.levelImages, 0], i, bk);
+            levelTextures[|i] = background_get_texture(bk);
         }
         surface_free(sf);
     }
@@ -671,15 +674,17 @@ if (!ds_exists(ctx, ds_type_grid)) {
         draw_clear(-1);
         f1 = 1;
         f2 = 32;
-        draw_background_ext(0, 0, f1, 0.25, f2 / 16, 0, $BCE3E7, 1);
+        draw_background_ext(ctx[#GameCtx.white16, 0], 0, f1, 0.25, f2 / 16, 0, $BCE3E7, 1);
         f1 += f2;
         f2 = 1;
-        draw_background_ext(0, 0, f1, 0.25, f2 / 16, 0, $3B5F81, 1);
+        draw_background_ext(ctx[#GameCtx.white16, 0], 0, f1, 0.25, f2 / 16, 0, $3B5F81, 1);
         f1 += f2;
         f2 = 32;
-        draw_background_ext(0, 0, f1, 0.25, f2 / 16, 0, $375776, 1);
+        draw_background_ext(ctx[#GameCtx.white16, 0], 0, f1, 0.25, f2 / 16, 0, $375776, 1);
         surface_reset_target();
-        ctx[#GameCtx.cueTexture, 0] = background_get_texture(background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false));
+        bk = background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false);
+        ctx[#GameCtx.cueImage, 0] = bk;
+        ctx[#GameCtx.cueTexture, 0] = background_get_texture(bk);
         surface_free(sf);
     }
     n = 12;
@@ -721,9 +726,11 @@ if (!ds_exists(ctx, ds_type_grid)) {
         ctx[#GameCtx.ballOuterModel, 0] = md;
         surface_set_target(sf);
         draw_clear_alpha(0, 0);
-        draw_background_ext(0, 0, 24, 16., 8., 0, -1, 1);
+        draw_background_ext(ctx[#GameCtx.white16, 0], 0, 24, 16., 8., 0, -1, 1);
         surface_reset_target();
-        ctx[#GameCtx.ballOuterTexture, 0] = background_get_texture(background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false));
+        bk = background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false);
+        ctx[#GameCtx.ballOuterImage, 0] = bk;
+        ctx[#GameCtx.ballOuterTexture, 0] = background_get_texture(bk);
         surface_free(sf);
     }
     if (true/*"Ball inner"*/) {
@@ -746,6 +753,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
         d3d_model_primitive_end(md);
         ctx[#GameCtx.ballInnerModel, 0] = md;
         ctx[#GameCtx.ballInnerTexture, 0] = ds_list_create();
+        ctx[#GameCtx.ballInnerImage, 0] = ds_list_create();
         sf = surface_create(128, 128);
         for (i = 0; i < 10; i += 1) {
             surface_set_target(sf);
@@ -757,7 +765,9 @@ if (!ds_exists(ctx, ds_type_grid)) {
             d3d_model_draw(ds_list_find_value(ctx[#GameCtx.glyphsRaw, 0], i), -0.25, -0.5, 0, -1);
             d3d_transform_stack_pop();
             surface_reset_target();
-            ds_list_set(ctx[#GameCtx.ballInnerTexture, 0], i, background_get_texture(background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false)));
+            bk = background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false);
+            ds_list_set(ctx[#GameCtx.ballInnerImage, 0], i, bk);
+            ds_list_set(ctx[#GameCtx.ballInnerTexture, 0], i, background_get_texture(bk));
         }
         surface_free(sf);
     }
@@ -938,7 +948,49 @@ if (!ds_exists(ctx, ds_type_grid)) {
 }
 waveData = ctx[#GameCtx.waveData, 0];
 balls = ctx[#GameCtx.balls, 0];
-if (keyboard_check_pressed(27)) game_end();
+if (keyboard_check_pressed(27)) {
+    ds_list_destroy(ctx[#GameCtx.balls, 0]);
+    background_delete(ctx[#GameCtx.white16, 0]);
+    d3d_model_destroy(ctx[#GameCtx.logo, 0]);
+    sf = ctx[#GameCtx.logoColor, 0];
+    if (surface_exists(sf)) surface_free(sf);
+    sf = ctx[#GameCtx.logoShadow, 0];
+    if (surface_exists(sf)) surface_free(sf);
+    n = ds_list_size(ctx[#GameCtx.glyphs, 0]);
+    for (i = 0; i < n; i += 1) {
+        d3d_model_destroy(ds_list_find_value(ctx[#GameCtx.glyphs, 0], i));
+        d3d_model_destroy(ds_list_find_value(ctx[#GameCtx.glyphsRaw, 0], i));
+    }
+    ds_list_destroy(ctx[#GameCtx.glyphs, 0]);
+    ds_list_destroy(ctx[#GameCtx.glyphsRaw, 0]);
+    d3d_model_destroy(ctx[#GameCtx.ballOuterModel, 0]);
+    background_delete(ctx[#GameCtx.ballOuterImage, 0]);
+    n = ds_list_size(ctx[#GameCtx.ballInnerImage, 0]);
+    for (i = 0; i < n; i += 1) {
+        background_delete(ds_list_find_value(ctx[#GameCtx.ballInnerImage, 0], i));
+    }
+    d3d_model_destroy(ctx[#GameCtx.ballInnerModel, 0]);
+    ds_list_destroy(ctx[#GameCtx.ballColors, 0]);
+    d3d_model_destroy(ctx[#GameCtx.ballShadow, 0]);
+    d3d_model_destroy(ctx[#GameCtx.ballBrow, 0]);
+    d3d_model_destroy(ctx[#GameCtx.ballEye, 0]);
+    var this12 = ctx[#GameCtx.levelImages, 0];
+    n = 4;
+    for (i = 0; i < n; i += 1) {
+        background_delete(ds_list_find_value(ctx[#GameCtx.levelImages, 0], i));
+        d3d_model_destroy(ds_list_find_value(ctx[#GameCtx.levelModels, 0], i));
+    }
+    ds_list_destroy(ctx[#GameCtx.levelImages, 0]);
+    ds_list_destroy(ctx[#GameCtx.levelModels, 0]);
+    ds_list_destroy(ctx[#GameCtx.levelTextures, 0]);
+    background_delete(ctx[#GameCtx.cueImage, 0]);
+    d3d_model_destroy(ctx[#GameCtx.cueModel, 0]);
+    d3d_model_destroy(ctx[#GameCtx.mapTable, 0]);
+    d3d_model_destroy(ctx[#GameCtx.mapPlayer, 0]);
+    d3d_model_destroy(ctx[#GameCtx.mapBall, 0]);
+    game_end();
+    return 0;
+}
 if (keyboard_check_pressed(vk_f5)) display_reset(0, true);
 if (keyboard_check_pressed(vk_f6) && (display_aa & 2) != 0) display_reset(2, true);
 if (keyboard_check_pressed(vk_f7) && (display_aa & 4) != 0) display_reset(4, true);
@@ -2061,7 +2113,7 @@ if (true/*"UI"*/) {
             }
             if (k == 1) {
                 draw_set_blend_mode(bm_subtract);
-                draw_background_ext(0, 0, 0, ww / 16, wh / 16, 0, 0, 0.5);
+                draw_background_ext(ctx[#GameCtx.white16, 0], 0, 0, ww / 16, wh / 16, 0, 0, 0.5);
                 draw_set_blend_mode(bm_add);
                 draw_surface(ctx[#GameCtx.logoColor, 0], 0, 0);
                 draw_set_blend_mode(bm_normal);
@@ -2078,7 +2130,7 @@ if (true/*"UI"*/) {
             vx = 172 * vz + 8;
             vy = wh - 172 * vz - 8 + 360. * sqr(1 - player[Player.ease]);
             vr = 0;
-            draw_background_ext(0, vx - 128 * vz, vy - 172 * vz, 256. * vz / 16, 344. * vz / 16, 0, 0, 0.5);
+            draw_background_ext(ctx[#GameCtx.white16, 0], vx - 128 * vz, vy - 172 * vz, 256. * vz / 16, 344. * vz / 16, 0, 0, 0.5);
             if (true/*"Balls"*/) {
                 n = ds_list_size(balls);
                 for (i = 0; i < n; i += 1) {
@@ -2124,12 +2176,12 @@ if (true/*"UI"*/) {
         if (player[Player.health] > 0) {
             x1 = ww / 2;
             y1 = wh / 2;
-            draw_background_ext(0, x1 - 1, y1 - 1, 0.125, 0.125, 0, -1, 0.5);
+            draw_background_ext(ctx[#GameCtx.white16, 0], x1 - 1, y1 - 1, 0.125, 0.125, 0, -1, 0.5);
             if (aim > 0) {
-                draw_background_ext(0, x1 + 8, y1 - 1, aim * 16 / 16, 0.125, 0, -1, 0.5);
-                draw_background_ext(0, x1 - 8, y1 - 1, aim * -16 / 16, 0.125, 0, -1, 0.5);
-                draw_background_ext(0, x1 - 1, y1 + 8, 0.125, aim * 16 / 16, 0, -1, 0.5);
-                draw_background_ext(0, x1 - 1, y1 - 8, 0.125, aim * -16 / 16, 0, -1, 0.5);
+                draw_background_ext(ctx[#GameCtx.white16, 0], x1 + 8, y1 - 1, aim * 16 / 16, 0.125, 0, -1, 0.5);
+                draw_background_ext(ctx[#GameCtx.white16, 0], x1 - 8, y1 - 1, aim * -16 / 16, 0.125, 0, -1, 0.5);
+                draw_background_ext(ctx[#GameCtx.white16, 0], x1 - 1, y1 + 8, 0.125, aim * 16 / 16, 0, -1, 0.5);
+                draw_background_ext(ctx[#GameCtx.white16, 0], x1 - 1, y1 - 8, 0.125, aim * -16 / 16, 0, -1, 0.5);
             }
         } else {
             vz = wh / 4;

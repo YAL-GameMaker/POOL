@@ -63,11 +63,11 @@ class Game {
 		var vx:Float, vy:Float, vz:Float, vr:Float;
 		var dx:Float, dy:Float, dz:Float, df:Float;
 		var x1:Float, y1:Float, z1:Float, x2:Float, y2:Float, z2:Float;
-		var sf:Surface, tx:Texture, md:D3dModel;
+		var sf:Surface, bk:Background, tx:Texture, md:D3dModel;
 		var ww:Int = Window.width, wh:Int = Window.height;
 		// The following replace calls to them, substituting arguments accordingly:
 		inline function drawRect(x:Float, y:Float, w:Float, h:Float, c:Color = -1, a:Float = 1) {
-			Draw.backgroundExt(cast 0, x, y, w / 16, h / 16, 0, c, a);
+			Draw.backgroundExt(ctx.white16, x, y, w / 16, h / 16, 0, c, a);
 		}
 		/** (vx, vy, vz, vr) -> (f1, f2) -> f */
 		inline function findAlt() {
@@ -183,6 +183,7 @@ class Game {
 			ctx.levelModels = levelModels;
 			levelTextures = new GameLevelData();
 			ctx.levelTextures = levelTextures;
+			ctx.levelImages = new GameLevelData();
 			if (block("Font")) {
 				ctx.glyphs = new ArrayList();
 				ctx.glyphsRaw = new ArrayList();
@@ -268,7 +269,7 @@ class Game {
 				sf.setTarget();
 				Draw.clear(-1);
 				sf.resetTarget();
-				sf.toBackground(); // -> #0
+				ctx.white16 = sf.toBackground();
 				// make textures:
 				cfor(i = 0, i < 4, i++, {
 					inline function cd(v1:Color, v2:Color) {
@@ -287,7 +288,9 @@ class Game {
 					drawRect(0, 0, 8, 8, c2);
 					drawRect(8, 8, 8, 8, c2);
 					sf.resetTarget();
-					levelTextures[i] = sf.toBackground().texture;
+					bk = sf.toBackground();
+					ctx.levelImages[i] = bk;
+					levelTextures[i] = bk.texture;
 				});
 				sf.destroy();
 			}
@@ -442,7 +445,9 @@ class Game {
 				f1 += f2; f2 = 32;
 				drawRect(0, f1, 4, f2, Color.fromHex(0x765737));
 				sf.resetTarget();
-				ctx.cueTexture = sf.toBackground().texture;
+				bk = sf.toBackground();
+				ctx.cueImage = bk;
+				ctx.cueTexture = bk.texture;
 				sf.destroy();
 			}
 			//
@@ -485,7 +490,9 @@ class Game {
 				Draw.clearAlpha(0, 0);
 				drawRect(0, 24, 256, 128, -1);
 				sf.resetTarget();
-				ctx.ballOuterTexture = sf.toBackground().texture;
+				bk = sf.toBackground();
+				ctx.ballOuterImage = bk;
+				ctx.ballOuterTexture = bk.texture;
 				sf.destroy();
 			}
 			if (block("Ball inner")) {
@@ -507,6 +514,7 @@ class Game {
 				ctx.ballInnerModel = md;
 				//
 				ctx.ballInnerTexture = new ArrayList();
+				ctx.ballInnerImage = new ArrayList();
 				sf = new Surface(128, 128);
 				cfor(i = 0, i < 10, i++, {
 					sf.setTarget();
@@ -518,7 +526,9 @@ class Game {
 					ctx.glyphsRaw[i].draw( -fontWidth / 2, -0.5, 0, Texture.defValue);
 					D3dTransform.pop();
 					sf.resetTarget();
-					ctx.ballInnerTexture[i] = sf.toBackground().texture;
+					bk = sf.toBackground();
+					ctx.ballInnerImage[i] = bk;
+					ctx.ballInnerTexture[i] = bk.texture;
 				});
 				sf.destroy();
 			}
@@ -641,12 +651,63 @@ class Game {
 		waveData = ctx.waveData;
 		balls = ctx.balls;
 		//{ Keyboard shortcuts
-		if (Keyboard.pressed(27)) raw("game_end")();
+		if (Keyboard.pressed(27)) { // game end
+			ctx.balls.destroy();
+			ctx.white16.destroy();
+			//
+			ctx.logo.destroy();
+			sf = ctx.logoColor;
+			if (Surface.isValid(sf)) sf.destroy();
+			sf = ctx.logoShadow;
+			if (Surface.isValid(sf)) sf.destroy();
+			//
+			n = ctx.glyphs.length;
+			cfor(i = 0, i < n, i++, {
+				ctx.glyphs[i].destroy();
+				ctx.glyphsRaw[i].destroy();
+			});
+			ctx.glyphs.destroy();
+			ctx.glyphsRaw.destroy();
+			//
+			ctx.ballOuterModel.destroy();
+			ctx.ballOuterImage.destroy();
+			n = ctx.ballInnerImage.length;
+			cfor(i = 0, i < n, i++, {
+				ctx.ballInnerImage[i].destroy();
+			});
+			ctx.ballInnerModel.destroy();
+			ctx.ballColors.destroy();
+			ctx.ballShadow.destroy();
+			ctx.ballBrow.destroy();
+			ctx.ballEye.destroy();
+			//
+			n = ctx.levelImages.length;
+			cfor(i = 0, i < n, i++, {
+				ctx.levelImages[i].destroy();
+				ctx.levelModels[i].destroy();
+			});
+			ctx.levelImages.destroy();
+			ctx.levelModels.destroy();
+			ctx.levelTextures.destroy();
+			//
+			ctx.cueImage.destroy();
+			ctx.cueModel.destroy();
+			//
+			ctx.mapTable.destroy();
+			ctx.mapPlayer.destroy();
+			ctx.mapBall.destroy();
+			//
+			
+			//
+			raw("game_end")();
+			return;
+		}
 		if (Keyboard.pressed(raw("vk_f5"))) Display.reset(0, true);
 		if (Keyboard.pressed(raw("vk_f6")) && Display.aaFlags & 2 != 0) Display.reset(2, true);
 		if (Keyboard.pressed(raw("vk_f7")) && Display.aaFlags & 4 != 0) Display.reset(4, true);
 		if (Keyboard.pressed(raw("vk_f8")) && Display.aaFlags & 8 != 0) Display.reset(8, true);
 		//}
+		//{ Step
 		var aim:Float = 0;
 		var alive = player.health > 0;
 		if (ctx.menu) {
@@ -915,6 +976,8 @@ class Game {
 			camData.z2 += 0.003;
 			//camData.z1 += 0.001;
 		}
+		//}
+		//{ Draw
 		D3dContext.setProjectionExt(
 			camData.x1, camData.y1, camData.z1,
 			camData.x2, camData.y2, camData.z2,
@@ -1453,6 +1516,7 @@ class Game {
 				} // KO
 			}
 		}
+		//}
 	}
 }
 
@@ -1508,6 +1572,7 @@ class Game {
 	private inline function get_length():Int return sizeof;
 	//
 	public inline function new() this = SfTools.raw("ds_list_create")();
+	public inline function destroy() this.destroy();
 	//
 	public inline function get(i:GameLevel):T return this[i.getIndex()];
 	public inline function set(i:GameLevel, v:T):Void this[i.getIndex()] = v;
@@ -1527,6 +1592,7 @@ class Game {
 	public var waveData:WaveData;
 	public var cameraData:CameraData;
 	//
+	public var white16:Background;
 	public var logo:D3dModel;
 	public var logoColor:Surface;
 	public var logoShadow:Surface;
@@ -1541,10 +1607,12 @@ class Game {
 	public var ballOuterModel:D3dModel;
 	/** Texture for the colored bits of balls. Has a cutout on top. */
 	public var ballOuterTexture:Texture;
+	public var ballOuterImage:Background;
 	/** Model for the number area of balls. A flattened cone with pre-skewed UVs. */
 	public var ballInnerModel:D3dModel;
 	/** Textures for ball numbers (non-skewed glyphs) */
 	public var ballInnerTexture:ArrayList<Texture>;
+	public var ballInnerImage:ArrayList<Background>;
 	/** An array of ball colors per number (follows a common pool color scheme). */
 	public var ballColors:ArrayList<Color>;
 	/** A flat model for ball shadows. Same LOD as ball itself. */
@@ -1555,12 +1623,14 @@ class Game {
 	public var ballBrow:D3dModel;
 	//
 	public var levelTextures:GameLevelData<Texture>;
+	public var levelImages:GameLevelData<Background>;
 	public var levelModels:GameLevelData<D3dModel>;
 	/** A single-color primitive that covers the plateu outside the game area. */
 	public var levelOuter:D3dModel;
 	//
 	public var cueModel:D3dModel;
 	public var cueTexture:Texture;
+	public var cueImage:Background;
 	//
 	/** Minimap' outer edge. */
 	public var mapTable:D3dModel;
