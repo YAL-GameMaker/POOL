@@ -1,4 +1,4 @@
-// Generated at 2016-09-17 18:25:31 (1155ms)
+// Generated at 2016-09-17 18:34:19 (1187ms)
 enum Player { health, healthEase, regen, jump, x, y, z, vx, vy, vz, cx, cy, cz, rad, alt, ball, bop, cueX, cueY, cueZ, yaw, tilt, ease }
 enum Ball { x, y, z, cx, cy, cz, vz, col, bounces, gz, yaw, jump, wait, boost, rush, number, rad }
 enum CameraData { x1, y1, z1, x2, y2, z2 }
@@ -988,6 +988,7 @@ if (keyboard_check_pressed(27)) {
     d3d_model_destroy(ctx[#GameCtx.mapTable, 0]);
     d3d_model_destroy(ctx[#GameCtx.mapPlayer, 0]);
     d3d_model_destroy(ctx[#GameCtx.mapBall, 0]);
+    ds_grid_destroy(ctx);
     game_end();
     return 0;
 }

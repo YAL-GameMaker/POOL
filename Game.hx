@@ -697,7 +697,7 @@ class Game {
 			ctx.mapPlayer.destroy();
 			ctx.mapBall.destroy();
 			//
-			
+			ctx.destroy();
 			//
 			raw("game_end")();
 			return;
@@ -1645,6 +1645,7 @@ class Game {
 	//
 	private static var sizeof:Int;
 	public inline function new() this = new Grid(sizeof, 1);
+	public inline function destroy() this.destroy();
 	public inline function isValid() return Grid.isValid(this);
 	private inline function get(i:GameCtx):Dynamic {
 		return this.get(i.getIndex(), 0);
