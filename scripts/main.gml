@@ -1,4 +1,4 @@
-// Generated at 2016-09-19 00:12:48 (1484ms)
+// Generated at 2016-09-19 02:25:37 (1141ms)
 enum Player { health, healthEase, regen, jump, x, y, z, vx, vy, vz, cx, cy, cz, rad, alt, ball, bop, cueX, cueY, cueZ, yaw, tilt, ease }
 enum Ball { x, y, z, cx, cy, cz, vz, col, bounces, gz, yaw, jump, wait, boost, rush, number, rad }
 enum CameraData { x1, y1, z1, x2, y2, z2 }
@@ -11,13 +11,16 @@ var levelModels, levelTextures, player, camData, waveData, conf, ball, ball2, ba
 var ww = window_get_width();
 var wh = window_get_height();
 var osx = os_type == os_macosx;
+var web = os_browser != browser_not_a_browser;
 if (!ds_exists(ctx, ds_type_grid)) {
     ctx = ds_grid_create(37, 1);
     randomize();
     window_set_caption("POOL [of doom!] by YellowAfterlife");
     application_surface_enable(false);
-    display_reset(0, true);
-    display_set_windows_alternate_sync(true);
+    if (!web) {
+        display_reset(0, true);
+        display_set_windows_alternate_sync(true);
+    }
     draw_set_alpha_test(true);
     room_speed = 60;
     background_color = $FFFFBD;
@@ -49,11 +52,6 @@ if (!ds_exists(ctx, ds_type_grid)) {
     ctx[#GameCtx.conf, 0] = conf;
     ctx[#GameCtx.menu, 0] = true;
     player = undefined;
-    player[22] = 0;
-    player[Player.health] = 1;
-    player[Player.rad] = 6;
-    player[Player.alt] = 20;
-    player[Player.ball] = undefined;
     ctx[#GameCtx.player, 0] = player;
     levelModels = ds_list_create();
     ctx[#GameCtx.levelModels, 0] = levelModels;
@@ -957,10 +955,12 @@ if (!ds_exists(ctx, ds_type_grid)) {
         ctx[#GameCtx.logoColor, 0] = -1;
     }
     camData = undefined;
-    camData[5] = 0;
+    camData[CameraData.z2] = 0;
     camData[CameraData.x1] = 200;
     camData[CameraData.y1] = -200;
     camData[CameraData.z1] = 150;
+    camData[CameraData.x2] = 0;
+    camData[CameraData.y2] = 0;
     ctx[#GameCtx.cameraData, 0] = camData;
     ctx[#GameCtx.score, 0] = -1;
 } else {
@@ -1020,24 +1020,18 @@ if (keyboard_check_pressed(vk_f5)) display_reset(0, true);
 if (keyboard_check_pressed(vk_f6) && (display_aa & 2) != 0) display_reset(2, true);
 if (keyboard_check_pressed(vk_f7) && (display_aa & 4) != 0) display_reset(4, true);
 if (keyboard_check_pressed(vk_f8) && (display_aa & 8) != 0) display_reset(8, true);
-var aim = 0;
-var alive = player[Player.health] > 0;
+var makePlayer = is_undefined(player);
 if (ctx[#GameCtx.menu, 0]) {
     if (mouse_check_button_pressed(mb_left)) {
         ctx[#GameCtx.menu, 0] = false;
         ctx[#GameCtx.score, 0] = 0;
-        player = undefined;
-        player[22] = 0;
-        player[Player.health] = 1;
-        player[Player.healthEase] = 1;
-        player[Player.rad] = 6;
-        player[Player.alt] = 20;
-        player[Player.ball] = undefined;
-        player[@Player.yaw] = point_direction(camData[CameraData.x1], camData[CameraData.y1], camData[CameraData.x2], camData[CameraData.y2]);
-        ctx[#GameCtx.player, 0] = player;
+        makePlayer = true;
         ds_list_clear(balls);
         waveData = undefined;
-        waveData[3] = 0;
+        waveData[WaveData.next] = 0;
+        waveData[WaveData.wave] = 0;
+        waveData[WaveData.spawn] = 0;
+        waveData[WaveData.left] = 0;
         ctx[#GameCtx.waveData, 0] = waveData;
     } else {
         f2 = current_time / 400 + 45;
@@ -1051,7 +1045,37 @@ if (ctx[#GameCtx.menu, 0]) {
         camData[@CameraData.y2] = lerp(camData[CameraData.y2], 0, f);
         camData[@CameraData.z2] = lerp(camData[CameraData.z2], 32, f);
     }
-} else if (alive) {
+}
+if (makePlayer) {
+    player = undefined;
+    player[Player.ease] = 0;
+    player[Player.x] = 0;
+    player[Player.y] = 0;
+    player[Player.z] = 0;
+    player[Player.vx] = 0;
+    player[Player.vy] = 0;
+    player[Player.vz] = 0;
+    player[Player.cx] = 0;
+    player[Player.cy] = 0;
+    player[Player.cz] = 0;
+    player[Player.cueX] = 0;
+    player[Player.cueY] = 0;
+    player[Player.cueZ] = 0;
+    player[Player.regen] = 0;
+    player[Player.jump] = 0;
+    player[Player.yaw] = point_direction(camData[CameraData.x1], camData[CameraData.y1], camData[CameraData.x2], camData[CameraData.y2]);
+    player[Player.tilt] = 0;
+    player[Player.health] = 1;
+    player[Player.healthEase] = 1;
+    player[Player.rad] = 6;
+    player[Player.alt] = 20;
+    player[Player.ball] = undefined;
+    player[Player.bop] = 0;
+    ctx[#GameCtx.player, 0] = player;
+}
+var alive = !is_undefined(player) && player[Player.health] > 0;
+var aim = 0;
+if (!ctx[#GameCtx.menu, 0] && alive) {
     if (true/*"Waves"*/) {
         if (waveData[WaveData.left] > 0) {
             if (waveData[WaveData.spawn] >= 1) {
@@ -1064,10 +1088,19 @@ if (ctx[#GameCtx.menu, 0]) {
                 ball[Ball.x] = random_range(-(128 - vr), 128 - vr);
                 ball[Ball.y] = random_range(-(172 - vr), 172 - vr);
                 ball[Ball.z] = 92.;
+                ball[Ball.cx] = 0;
+                ball[Ball.cy] = 0;
+                ball[Ball.cz] = 0;
+                ball[Ball.yaw] = random(360);
+                ball[Ball.jump] = 0;
+                ball[Ball.wait] = 0;
                 ball[Ball.vz] = -8;
+                ball[Ball.gz] = 0;
                 ball[Ball.boost] = random_range(0.9, 0.2 + power(i, 0.4));
                 ball[Ball.rush] = random_range(0.9, 0.2 + power(i, 0.4));
                 ball[Ball.number] = irandom_range(1, 8);
+                ball[Ball.bounces] = 0;
+                ball[Ball.col] = false;
                 ds_list_add(balls, ball);
             } else waveData[@WaveData.spawn] += 1 / (300 / (10 + waveData[WaveData.wave]));
         } else if (ds_list_size(balls) <= 0) {
@@ -2035,7 +2068,7 @@ if (true/*"Balls"*/) {
     ds_priority_destroy(pq);
     draw_set_color(-1);
 }
-if (!ctx[#GameCtx.menu, 0] && player[Player.health] > 0 && player[Player.ease] >= 0.7 && true/*"Cue"*/) {
+if (!ctx[#GameCtx.menu, 0] && alive && player[Player.ease] >= 0.7 && true/*"Cue"*/) {
     d3d_transform_stack_push();
     d3d_transform_add_translation(1 - player[Player.cueY], 1.4 + player[Player.cueX], -power(player[Player.cueZ], 1.5));
     d3d_transform_add_rotation_y(-player[Player.tilt] - 90);

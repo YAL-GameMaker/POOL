@@ -66,6 +66,7 @@ class Game {
 		var sf:Surface, bk:Background, tx:Texture, md:D3dModel;
 		var ww:Int = Window.width, wh:Int = Window.height;
 		var osx:Bool = raw("os_type") == raw("os_macosx");
+		var web:Bool = raw("os_browser") != raw("browser_not_a_browser");
 		// The following replace calls to them, substituting arguments accordingly:
 		inline function drawRect(x:Float, y:Float, w:Float, h:Float, c:Color = -1, a:Float = 1) {
 			Draw.backgroundExt(ctx.white16, x, y, w / 16, h / 16, 0, c, a);
@@ -164,8 +165,10 @@ class Game {
 			raw("randomize")();
 			raw("window_set_caption")("POOL [of doom!] by YellowAfterlife");
 			raw("application_surface_enable")(false);
-			Display.reset(0, true);
-			raw("display_set_windows_alternate_sync")(true);
+			if (!web) {
+				Display.reset(0, true);
+				raw("display_set_windows_alternate_sync")(true);
+			}
 			raw("draw_set_alpha_test")(true);
 			//Window.resize(506, 320);
 			Current.frameRate = 60;
@@ -199,7 +202,7 @@ class Game {
 			ctx.conf = conf;
 			//
 			ctx.menu = true;
-			player = { health: 1, rad: 6, alt: 20, ball: null };
+			player = null;
 			ctx.player = player;
 			//
 			levelModels = new GameLevelData();
@@ -663,7 +666,7 @@ class Game {
 				ctx.logoColor = Surface.none;
 			}
 			//
-			camData = { x1: 200, y1: -200, z1: 150 };
+			camData = { x1: 200, y1: -200, z1: 150, x2: 0, y2: 0, z2: 0 };
 			ctx.cameraData = camData;
 			ctx.score = -1;
 		} // init
@@ -734,17 +737,14 @@ class Game {
 		if (Keyboard.pressed(raw("vk_f8")) && Display.aaFlags & 8 != 0) Display.reset(8, true);
 		//}
 		//{ Step
-		var aim:Float = 0;
-		var alive = player.health > 0;
+		var makePlayer = player == null;
 		if (ctx.menu) {
 			if (Mouse.pressed(MouseButton.LEFT)) {
 				ctx.menu = false;
 				ctx.score = 0;
-				player = { health: 1, healthEase: 1, rad: 6, alt: 20, ball: null };
-				player.yaw = dir2d(camData.x1, camData.y1, camData.x2, camData.y2);
-				ctx.player = player;
+				makePlayer = true;
 				balls.clear();
-				waveData = { };
+				waveData = { wave: 0, spawn: 0, left: 0, next: 0 };
 				ctx.waveData = waveData;
 			} else {
 				f2 = Lib.getTimer() / 400 + 45;
@@ -758,8 +758,24 @@ class Game {
 				camData.y2 = lerp(camData.y2, 0, f);
 				camData.z2 = lerp(camData.z2, tbz, f);
 			}
-		} else
-		if (alive) { // in-game
+		}
+		if (makePlayer) {
+			player = {
+				x: 0, y: 0, z: 0,
+				vx: 0, vy: 0, vz: 0,
+				cx: 0, cy: 0, cz: 0,
+				cueX: 0, cueY: 0, cueZ: 0,
+				regen: 0, jump: 0, ease: 0,
+				yaw: dir2d(camData.x1, camData.y1, camData.x2, camData.y2), tilt: 0,
+				health: 1, healthEase: 1,
+				rad: 6, alt: 20,
+				ball: null, bop: 0
+			};
+			ctx.player = player;
+		}
+		var alive = player != null && player.health > 0;
+		var aim:Float = 0;
+		if (!ctx.menu && alive) { // in-game
 			if (block("Waves")) {
 				if (waveData.left > 0) {
 					if (waveData.spawn >= 1) {
@@ -771,10 +787,13 @@ class Game {
 							x: randomRange( -(tbx - vr), tbx - vr),
 							y: randomRange( -(tby - vr), tby - vr),
 							z: tbz + 60,
-							vz: -8,
+							cx: 0, cy: 0, cz: 0,
+							yaw: random(360),
+							jump: 0, wait: 0, vz: -8, gz: 0, 
 							boost: randomRange(0.9, 0.2 + pow(i, 0.4)),
 							rush: randomRange(0.9, 0.2 + pow(i, 0.4)),
 							number: irandomRange(1, 8),
+							bounces: 0, col: false,
 							rad: vr
 						};
 						balls.add(ball);
@@ -1348,7 +1367,7 @@ class Game {
 			pq.destroy();
 			Draw.color = -1;
 		}
-		if (!ctx.menu && player.health > 0 && player.ease >= 0.7 && block("Cue")) {
+		if (!ctx.menu && alive && player.ease >= 0.7 && block("Cue")) {
 			D3dTransform.push();
 			D3dTransform.translate(1 - player.cueY, 1.4 + player.cueX,
 				//1 * (1 - aim * .9) - player.cueY * (1 - aim * .5),
@@ -1570,29 +1589,29 @@ class Game {
 
 @:doc @:nativeGen typedef Player = {
 	health:Float, // Actual health (0..1)
-	?healthEase:Float, // Displayed health (eased to match actual health).
-	?regen:Float, // Regeneration speed multiplier (0..1).
-	?jump:Float, // Countdown for whether the player still can jump.
-	?x:Float, ?y:Float, ?z:Float, // Position
-	?vx:Float, ?vy:Float, ?vz:Float, // Velocity (walk/jump)
-	?cx:Float, ?cy:Float, ?cz:Float, // Knockback velocity
+	healthEase:Float, // Displayed health (eased to match actual health).
+	regen:Float, // Regeneration speed multiplier (0..1).
+	jump:Float, // Countdown for whether the player still can jump.
+	x:Float, y:Float, z:Float, // Position
+	vx:Float, vy:Float, vz:Float, // Velocity (walk/jump)
+	cx:Float, cy:Float, cz:Float, // Knockback velocity
 	rad:Float, alt:Float, // Radius, Z height
 	ball:Ball, // A reference to last ball that bopped the player
-	?bop:Float, // Player can only be bopped so often (bop "cooldown").
-	?cueX:Float, ?cueY:Float, ?cueZ:Float, // Cue offset (easing when rotating the view).
-	?yaw:Float, ?tilt:Float, // Camera Z and Y axis rotation.
-	?ease:Float, // Ease-in/ease-out for UI.
+	bop:Float, // Player can only be bopped so often (bop "cooldown").
+	cueX:Float, cueY:Float, cueZ:Float, // Cue offset (easing when rotating the view).
+	yaw:Float, tilt:Float, // Camera Z and Y axis rotation.
+	ease:Float, // Ease-in/ease-out for UI.
 }
 @:doc @:nativeGen typedef Ball = {
-	?x:Float, ?y:Float, ?z:Float, // Position
-	?cx:Float, ?cy:Float, ?cz:Float, // Knockback velocity
-	?vz:Float, // Vertical velocity (jumping)
-	?col:Bool, // Whether this ball partaked in a ball-ball collision this frame already.
-	?bounces:Int, // Counts up ball-ball richochets for combos. Reset on speed loss.
-	?gz:Float, // Memorized ground' Z (for drawing shadow correctly)
-	?yaw:Float, // Z-axis rotation.
-	?jump:Float, // Jump progress (0..1).
-	?wait:Float, // Waiting time until next jump (0..1).
+	x:Float, y:Float, z:Float, // Position
+	cx:Float, cy:Float, cz:Float, // Knockback velocity
+	vz:Float, // Vertical velocity (jumping)
+	col:Bool, // Whether this ball partaked in a ball-ball collision this frame already.
+	bounces:Int, // Counts up ball-ball richochets for combos. Reset on speed loss.
+	gz:Float, // Memorized ground' Z (for drawing shadow correctly)
+	yaw:Float, // Z-axis rotation.
+	jump:Float, // Jump progress (0..1).
+	wait:Float, // Waiting time until next jump (0..1).
 	boost:Float, // Multiplier for jump XY velocity.
 	rush:Float, // Divisor for waiting times.
 	number:Int, // Determines number and color of this ball.
@@ -1600,11 +1619,11 @@ class Game {
 }
 /** Stores camera positions for easing. */
 @:doc @:nativeGen typedef CameraData = {
-	?x1:Float, ?y1:Float, ?z1:Float, ?x2:Float, ?y2:Float, ?z2:Float
+	x1:Float, y1:Float, z1:Float, x2:Float, y2:Float, z2:Float
 }
 /** Stores information about the ongoing wave spawning. */
 @:doc @:nativeGen typedef WaveData = {
-	?wave:Int, ?left:Int, ?spawn:Float, ?next:Float, 
+	wave:Int, left:Int, spawn:Float, next:Float, 
 }
 /** Reflects the customizeable INI config file */
 @:doc @:nativeGen typedef GameConf = {
