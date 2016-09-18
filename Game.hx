@@ -186,6 +186,15 @@ class Game {
 				spinX: IniFile.readFloat("controls", "spinX", -0.2),
 				spinY: IniFile.readFloat("controls", "spinY", 0.2),
 			};
+			if (block("Flush config")) { // flush
+				IniFile.writeInt("controls", "up", conf.keyUp);
+				IniFile.writeInt("controls", "down", conf.keyDown);
+				IniFile.writeInt("controls", "left", conf.keyLeft);
+				IniFile.writeInt("controls", "right", conf.keyRight);
+				IniFile.writeInt("controls", "jump", conf.keyJump);
+				IniFile.writeFloat("controls", "spinX", conf.spinX);
+				IniFile.writeFloat("controls", "spinY", conf.spinY);
+			};
 			IniFile.close();
 			ctx.conf = conf;
 			//
@@ -776,7 +785,7 @@ class Game {
 					waveData.wave += 1;
 					waveData.left = 1 + waveData.wave;
 					waveData.next = 0;
-				} else {
+				} else if (player.z < tbz) {
 					waveData.next += 1 / 300;
 				}
 			}
@@ -1193,7 +1202,7 @@ class Game {
 				ball.gz = f;
 				if (vz > f) {
 					ball.vz -= 1 / 24;
-				} else {
+				} else if (player.z < tbz) {
 					ball.wait -= (1 / 30) * ball.rush;
 					if (ball.wait <= 0) {
 						ball.wait = 1;

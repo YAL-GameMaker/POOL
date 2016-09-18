@@ -1,4 +1,4 @@
-// Generated at 2016-09-18 22:59:29 (1780ms)
+// Generated at 2016-09-19 00:12:48 (1484ms)
 enum Player { health, healthEase, regen, jump, x, y, z, vx, vy, vz, cx, cy, cz, rad, alt, ball, bop, cueX, cueY, cueZ, yaw, tilt, ease }
 enum Ball { x, y, z, cx, cy, cz, vz, col, bounces, gz, yaw, jump, wait, boost, rush, number, rad }
 enum CameraData { x1, y1, z1, x2, y2, z2 }
@@ -29,13 +29,22 @@ if (!ds_exists(ctx, ds_type_grid)) {
     ini_open("POOL.ini");
     conf = undefined;
     conf[6] = 0;
-    conf[GameConf.keyUp] = floor(ini_read_real("controls", "up", 87));
-    conf[GameConf.keyDown] = floor(ini_read_real("controls", "down", 83));
-    conf[GameConf.keyLeft] = floor(ini_read_real("controls", "left", 65));
-    conf[GameConf.keyRight] = floor(ini_read_real("controls", "right", 68));
-    conf[GameConf.keyJump] = floor(ini_read_real("controls", "jump", 32));
+    conf[GameConf.keyUp] = round(ini_read_real("controls", "up", 87));
+    conf[GameConf.keyDown] = round(ini_read_real("controls", "down", 83));
+    conf[GameConf.keyLeft] = round(ini_read_real("controls", "left", 65));
+    conf[GameConf.keyRight] = round(ini_read_real("controls", "right", 68));
+    conf[GameConf.keyJump] = round(ini_read_real("controls", "jump", 32));
     conf[GameConf.spinX] = ini_read_real("controls", "spinX", -0.2);
     conf[GameConf.spinY] = ini_read_real("controls", "spinY", 0.2);
+    if (true/*"Flush config"*/) {
+        ini_write_string("controls", "up", string(conf[GameConf.keyUp]));
+        ini_write_string("controls", "down", string(conf[GameConf.keyDown]));
+        ini_write_string("controls", "left", string(conf[GameConf.keyLeft]));
+        ini_write_string("controls", "right", string(conf[GameConf.keyRight]));
+        ini_write_string("controls", "jump", string(conf[GameConf.keyJump]));
+        ini_write_real("controls", "spinX", conf[GameConf.spinX]);
+        ini_write_real("controls", "spinY", conf[GameConf.spinY]);
+    }
     ini_close();
     ctx[#GameCtx.conf, 0] = conf;
     ctx[#GameCtx.menu, 0] = true;
@@ -1066,7 +1075,9 @@ if (ctx[#GameCtx.menu, 0]) {
                 waveData[@WaveData.wave] += 1;
                 waveData[@WaveData.left] = 1 + waveData[WaveData.wave];
                 waveData[@WaveData.next] = 0;
-            } else waveData[@WaveData.next] += (1 / 300);
+            } else if (player[Player.z] < 32) {
+                waveData[@WaveData.next] += (1 / 300);
+            }
         }
     }
     if (window_has_focus()) {
@@ -1881,7 +1892,7 @@ if (true/*"Balls"*/) {
         ball[@Ball.gz] = f;
         if (vz > f) {
             ball[@Ball.vz] -= (1 / 24);
-        } else {
+        } else if (player[Player.z] < 32) {
             ball[@Ball.wait] -= ((1 / 30)) * ball[Ball.rush];
             if (ball[Ball.wait] <= 0) {
                 ball[@Ball.wait] = 1;
