@@ -1,16 +1,18 @@
-// Generated at 2016-09-17 18:34:19 (1187ms)
+// Generated at 2016-09-18 22:59:29 (1780ms)
 enum Player { health, healthEase, regen, jump, x, y, z, vx, vy, vz, cx, cy, cz, rad, alt, ball, bop, cueX, cueY, cueZ, yaw, tilt, ease }
 enum Ball { x, y, z, cx, cy, cz, vz, col, bounces, gz, yaw, jump, wait, boost, rush, number, rad }
 enum CameraData { x1, y1, z1, x2, y2, z2 }
 enum WaveData { wave, left, spawn, next }
-enum GameLevel { water, holes, walls, cover }
-enum GameCtx { menu, player, balls, score, waveData, cameraData, white16, logo, logoColor, logoShadow, logoEase, glyphs, glyphsRaw, ballOuterModel, ballOuterTexture, ballOuterImage, ballInnerModel, ballInnerTexture, ballInnerImage, ballColors, ballShadow, ballEye, ballBrow, levelTextures, levelImages, levelModels, levelOuter, cueModel, cueTexture, cueImage, mapTable, mapPlayer, mapBall, koSlideIn, koSlideOut, koSlideThru }
+enum GameConf { keyUp, keyDown, keyLeft, keyRight, keyJump, spinX, spinY }
+enum GameLevel { holes, water, table, walls, cover }
+enum GameCtx { conf, menu, player, balls, score, waveData, cameraData, white16, logo, logoColor, logoShadow, logoEase, glyphs, glyphsRaw, ballOuterModel, ballOuterTexture, ballOuterImage, ballInnerModel, ballInnerTexture, ballInnerImage, ballColors, ballShadow, ballEye, ballBrow, levelTextures, levelImages, levelModels, levelOuter, cueModel, cueTexture, cueImage, mapTable, mapPlayer, mapBall, koSlideIn, koSlideOut, koSlideThru }
 var ctx = 0;
-var levelModels, levelTextures, player, camData, waveData, ball, ball2, balls, i, k, n, s, c1, c2, f, f1, f2, vx, vy, vz, vr, dx, dy, dz, df, x1, y1, z1, x2, y2, z2, sf, bk, tx, md;
+var levelModels, levelTextures, player, camData, waveData, conf, ball, ball2, balls, i, k, n, s, c1, c2, f, f1, f2, vx, vy, vz, vr, dx, dy, dz, df, x1, y1, z1, x2, y2, z2, sf, bk, tx, md;
 var ww = window_get_width();
 var wh = window_get_height();
+var osx = os_type == os_macosx;
 if (!ds_exists(ctx, ds_type_grid)) {
-    ctx = ds_grid_create(36, 1);
+    ctx = ds_grid_create(37, 1);
     randomize();
     window_set_caption("POOL [of doom!] by YellowAfterlife");
     application_surface_enable(false);
@@ -24,6 +26,18 @@ if (!ds_exists(ctx, ds_type_grid)) {
     d3d_set_hidden(true);
     window_set_cursor(cr_none);
     window_mouse_set(ww / 2, wh / 2);
+    ini_open("POOL.ini");
+    conf = undefined;
+    conf[6] = 0;
+    conf[GameConf.keyUp] = floor(ini_read_real("controls", "up", 87));
+    conf[GameConf.keyDown] = floor(ini_read_real("controls", "down", 83));
+    conf[GameConf.keyLeft] = floor(ini_read_real("controls", "left", 65));
+    conf[GameConf.keyRight] = floor(ini_read_real("controls", "right", 68));
+    conf[GameConf.keyJump] = floor(ini_read_real("controls", "jump", 32));
+    conf[GameConf.spinX] = ini_read_real("controls", "spinX", -0.2);
+    conf[GameConf.spinY] = ini_read_real("controls", "spinY", 0.2);
+    ini_close();
+    ctx[#GameCtx.conf, 0] = conf;
     ctx[#GameCtx.menu, 0] = true;
     player = undefined;
     player[22] = 0;
@@ -368,27 +382,24 @@ if (!ds_exists(ctx, ds_type_grid)) {
         draw_clear(-1);
         surface_reset_target();
         ctx[#GameCtx.white16, 0] = background_create_from_surface(sf, 0, 0, surface_get_width(sf), surface_get_height(sf), false, false);
-        for (i = 0; i < 4; i += 1) {
+        for (i = 0; i < 5; i += 1) {
             switch (i) {
-                case 0:
+                case GameLevel.water:
                     c1 = 13602631;
                     c2 = 15179856;
                     break;
-                case 1:
+                case GameLevel.holes:
                     c1 = 3626870;
                     c2 = 3891073;
                     break;
-                case 2:
+                case GameLevel.walls:
                     c1 = 4026783;
                     c2 = 4488882;
                     break;
-                case 3:
+                case GameLevel.table: case GameLevel.cover:
                     c1 = 3585132;
                     c2 = 4049273;
                     break;
-                default:
-                    c1 = 0;
-                    c2 = 0;
             }
             surface_set_target(sf);
             draw_clear(c1);
@@ -402,7 +413,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
         surface_free(sf);
     }
     if (true/*"Level models"*/) {
-        for (i = 0; i < 4; i += 1) {
+        for (i = 0; i < 5; i += 1) {
             md = d3d_model_create();
             d3d_model_primitive_begin(md, pr_trianglelist);
             levelModels[|i] = md;
@@ -435,7 +446,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
         }
         d3d_model_primitive_end(md);
         ctx[#GameCtx.levelOuter, 0] = md;
-        md = levelModels[|GameLevel.cover];
+        md = levelModels[|GameLevel.table];
         f = 0.001;
         x1 = -(118. + f);
         y1 = -20.;
@@ -449,6 +460,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
         d3d_model_vertex_texture(md, x1, y2, z1, (x1 + y2) / 32, (x1 - y2) / 32);
         d3d_model_vertex_texture(md, x2, y2, z1, (x2 + y2) / 32, (x2 - y2) / 32);
         for (i = -1; i <= 1; i += 2) {
+            md = levelModels[|GameLevel.table];
             x1 = -128.;
             y1 = (20 - f) * i;
             x2 = 128;
@@ -471,6 +483,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
             d3d_model_vertex_texture(md, x2, y1, z1, (x2 + y1) / 32, (x2 - y1) / 32);
             d3d_model_vertex_texture(md, x1, y2, z1, (x1 + y2) / 32, (x1 - y2) / 32);
             d3d_model_vertex_texture(md, x2, y2, z1, (x2 + y2) / 32, (x2 - y2) / 32);
+            md = levelModels[|GameLevel.cover];
             x1 = -108.;
             y1 = 172 * i;
             x2 = 108.;
@@ -587,7 +600,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
                 x1 = 128 * holeX;
                 if (holeY == 0) x1 += 10 * holeX;
                 y1 = 172 * holeY;
-                md = ds_list_find_value(ctx[#GameCtx.levelModels, 0], GameLevel.cover);
+                md = ds_list_find_value(ctx[#GameCtx.levelModels, 0], GameLevel.table);
                 z1 = 0;
                 for (i = 0; i < 2; i += 1) {
                     for (f = f1; f < f2; f += 15) {
@@ -620,6 +633,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
                         f1 = f2;
                         f2 = f + 360;
                         z1 = 32;
+                        md = levelModels[|GameLevel.cover];
                     }
                 }
                 md = levelModels[|GameLevel.holes];
@@ -660,7 +674,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
                 }
             }
         }
-        for (i = 0; i < 4; i += 1) {
+        for (i = 0; i < 5; i += 1) {
             d3d_model_primitive_end(levelModels[|i]);
         }
     }
@@ -941,6 +955,7 @@ if (!ds_exists(ctx, ds_type_grid)) {
     ctx[#GameCtx.cameraData, 0] = camData;
     ctx[#GameCtx.score, 0] = -1;
 } else {
+    conf = ctx[#GameCtx.conf, 0];
     player = ctx[#GameCtx.player, 0];
     levelModels = ctx[#GameCtx.levelModels, 0];
     levelTextures = ctx[#GameCtx.levelTextures, 0];
@@ -975,7 +990,7 @@ if (keyboard_check_pressed(27)) {
     d3d_model_destroy(ctx[#GameCtx.ballBrow, 0]);
     d3d_model_destroy(ctx[#GameCtx.ballEye, 0]);
     var this12 = ctx[#GameCtx.levelImages, 0];
-    n = 4;
+    n = 5;
     for (i = 0; i < n; i += 1) {
         background_delete(ds_list_find_value(ctx[#GameCtx.levelImages, 0], i));
         d3d_model_destroy(ds_list_find_value(ctx[#GameCtx.levelModels, 0], i));
@@ -1055,10 +1070,16 @@ if (ctx[#GameCtx.menu, 0]) {
         }
     }
     if (window_has_focus()) {
-        x1 = window_get_width() / 2;
-        y1 = window_get_height() / 2;
-        x2 = (window_mouse_get_x() - x1) * -0.2;
-        y2 = (window_mouse_get_y() - y1) * 0.2;
+        x1 = (window_get_width() >> 1);
+        y1 = (window_get_height() >> 1);
+        x2 = window_mouse_get_x() - x1;
+        y2 = window_mouse_get_y() - y1;
+        if (osx) {
+            if (window_get_fullscreen()) display_mouse_set(x1, y1); else window_mouse_set(x1, y1 - (window_get_height() - room_height));
+        } else window_mouse_set(x1, y1);
+        if (osx) y2 += 1;
+        x2 *= conf[GameConf.spinX];
+        y2 *= conf[GameConf.spinY];
         if (player[Player.ease] >= 1) {
             player[@Player.cueX] = lerp(player[Player.cueX], 0, 0.2) + x2 / 180;
             player[@Player.cueY] = lerp(player[Player.cueY], 0, 0.2) + y2 / 90;
@@ -1066,7 +1087,6 @@ if (ctx[#GameCtx.menu, 0]) {
             player[@Player.tilt] += y2;
             player[@Player.tilt] = clamp(player[Player.tilt], -85, 85);
         }
-        window_mouse_set(x1, y1);
     }
     if (player[Player.bop] > 0) {
         player[@Player.bop] -= 0.05;
@@ -1114,8 +1134,8 @@ if (ctx[#GameCtx.menu, 0]) {
     if (true/*"XY accel"*/) {
         vx = player[Player.vx];
         vy = player[Player.vy];
-        x2 = keyboard_check(ord("D")) - keyboard_check(ord("A"));
-        y2 = keyboard_check(ord("W")) - keyboard_check(ord("S"));
+        x2 = keyboard_check(conf[GameConf.keyRight]) - keyboard_check(conf[GameConf.keyLeft]);
+        y2 = keyboard_check(conf[GameConf.keyUp]) - keyboard_check(conf[GameConf.keyDown]);
         z2 = 0.4 * (1 - aim * 0.4);
         vx += lengthdir_x(z2, player[Player.yaw]) * y2;
         vy += lengthdir_y(z2, player[Player.yaw]) * y2;
@@ -1430,7 +1450,7 @@ if (ctx[#GameCtx.menu, 0]) {
         }
         if (vz > f) player[@Player.vz] -= 1 / 24; else player[@Player.jump] = 8;
         if (player[Player.jump] > 0) {
-            if (keyboard_check(ord(" "))) {
+            if (keyboard_check(conf[GameConf.keyJump])) {
                 player[@Player.vz] = 1.1;
                 player[@Player.jump] = 0;
             } else player[@Player.jump] -= 1;
@@ -1488,7 +1508,7 @@ if (true/*"Balls"*/) {
             dx *= df;
             dy *= df;
         }
-        if (df < 0.16) ball[@Ball.bounces] = 0;
+        if (df < 0.16 && ball[Ball.z] <= ball[Ball.gz]) ball[@Ball.bounces] = 0;
         if (dx != 0 || dy != 0) {
             x1 = ball[Ball.x];
             y1 = ball[Ball.y];
@@ -1907,7 +1927,11 @@ if (true/*"Environment"*/) {
     draw_set_color(background_color);
     d3d_model_draw(ctx[#GameCtx.levelOuter, 0], 0, 0, 0, -1);
     draw_set_color(-1);
-    for (i = 0; i < 4; i += 1) {
+    for (i = 0; i < 5; i += 1) {
+        switch (i) {
+            case GameLevel.cover: if (camData[CameraData.z1] < 32) continue; break;
+            case GameLevel.table: if (camData[CameraData.z1] < 0) continue; break;
+        }
         d3d_model_draw(levelModels[|i], 0, 0, 0, levelTextures[|i]);
     }
 }
@@ -1920,20 +1944,31 @@ if (true/*"Balls"*/) {
         d3d_set_culling(true);
         for (i = 0; i < n; i += 1) {
             ball = balls[|i];
-            d3d_transform_stack_push();
-            f = ball[Ball.rad] / 6 * (40 / (40 + ball[Ball.z]));
-            d3d_transform_add_scaling(f, f, f);
-            d3d_transform_add_rotation_z(0);
-            d3d_transform_add_translation(ball[Ball.x], ball[Ball.y], ball[Ball.gz] + 0.04);
-            d3d_model_draw(md, 0, 0, 0, -1);
-            d3d_transform_stack_pop();
+            if (ball[Ball.gz] > -8) {
+                d3d_transform_stack_push();
+                f = ball[Ball.rad] / 6 * (40 / (40 + ball[Ball.z]));
+                d3d_transform_add_scaling(f, f, f);
+                d3d_transform_add_rotation_z(0);
+                d3d_transform_add_translation(ball[Ball.x], ball[Ball.y], ball[Ball.gz] + 0.04);
+                d3d_model_draw(md, 0, 0, 0, -1);
+                d3d_transform_stack_pop();
+            }
         }
         d3d_set_culling(false);
         draw_set_color(-1);
         draw_set_alpha(1);
     }
+    var pq = ds_priority_create();
+    x1 = camData[CameraData.x1];
+    y1 = camData[CameraData.y1];
+    z1 = camData[CameraData.z1];
     for (i = 0; i < n; i += 1) {
         ball = balls[|i];
+        ds_priority_add(pq, ball, sqr(ball[Ball.x] - x1) + sqr(ball[Ball.y] - y1) + sqr(ball[Ball.z] - z1));
+    }
+    for (i = 0; i < n; i += 1) {
+        ball = ds_priority_delete_max(pq);
+        if (osx && ball[Ball.z] + ball[Ball.rad] <= 0) continue;
         f1 = ball[Ball.jump];
         c1 = ds_list_find_value(ctx[#GameCtx.ballColors, 0], ball[Ball.number]);
         c2 = merge_colour(c1, 0, 0.7);
@@ -1986,6 +2021,7 @@ if (true/*"Balls"*/) {
             d3d_transform_stack_pop();
         }
     }
+    ds_priority_destroy(pq);
     draw_set_color(-1);
 }
 if (!ctx[#GameCtx.menu, 0] && player[Player.health] > 0 && player[Player.ease] >= 0.7 && true/*"Cue"*/) {

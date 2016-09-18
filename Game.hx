@@ -11,6 +11,7 @@ import gml.d3d.*;
 import gml.assets.*;
 import gml.input.*;
 import gml.input.Window;
+import gml.io.IniFile;
 
 class Game {
 	/** A bit of magic to hint sections in generated code, since I was unable to rewire
@@ -54,9 +55,8 @@ class Game {
 	/** The videogame */
 	static inline function main() {
 		var ctx:GameCtxImpl = cast 0;
-		var levelModels:GameLevelData<D3dModel>;
-		var levelTextures:GameLevelData<Texture>;
-		var player:Player, camData:CameraData, waveData:WaveData;
+		var levelModels:GameLevelData<D3dModel>, levelTextures:GameLevelData<Texture>;
+		var player:Player, camData:CameraData, waveData:WaveData, conf:GameConf;
 		var ball:Ball, ball2:Ball, balls:ArrayList<Ball>;
 		var i:Int, k:Int, n:Int, s:String, c1:Color, c2:Color;
 		var f:Float, f1:Float, f2:Float;
@@ -65,6 +65,7 @@ class Game {
 		var x1:Float, y1:Float, z1:Float, x2:Float, y2:Float, z2:Float;
 		var sf:Surface, bk:Background, tx:Texture, md:D3dModel;
 		var ww:Int = Window.width, wh:Int = Window.height;
+		var osx:Bool = raw("os_type") == raw("os_macosx");
 		// The following replace calls to them, substituting arguments accordingly:
 		inline function drawRect(x:Float, y:Float, w:Float, h:Float, c:Color = -1, a:Float = 1) {
 			Draw.backgroundExt(ctx.white16, x, y, w / 16, h / 16, 0, c, a);
@@ -175,6 +176,19 @@ class Game {
 			Window.mouseCursor = WindowCursor.none;
 			Window.setMouse(ww / 2, wh / 2);
 			//
+			IniFile.open("POOL.ini");
+			conf = {
+				keyUp: IniFile.readInt("controls", "up", KeyCode.W),
+				keyDown: IniFile.readInt("controls", "down", KeyCode.S),
+				keyLeft: IniFile.readInt("controls", "left", KeyCode.A),
+				keyRight: IniFile.readInt("controls", "right", KeyCode.D),
+				keyJump: IniFile.readInt("controls", "jump", KeyCode.Space),
+				spinX: IniFile.readFloat("controls", "spinX", -0.2),
+				spinY: IniFile.readFloat("controls", "spinY", 0.2),
+			};
+			IniFile.close();
+			ctx.conf = conf;
+			//
 			ctx.menu = true;
 			player = { health: 1, rad: 6, alt: 20, ball: null };
 			ctx.player = player;
@@ -271,17 +285,16 @@ class Game {
 				sf.resetTarget();
 				ctx.white16 = sf.toBackground();
 				// make textures:
-				cfor(i = 0, i < 4, i++, {
+				cfor(i = 0, i < levelTextures.length, i++, {
 					inline function cd(v1:Color, v2:Color) {
 						c1 = Color.fromHex(v1);
 						c2 = Color.fromHex(v2);
 					}
-					switch (i) {
-						case 0: cd(0x478FCF, 0x50A0E7);
-						case 1: cd(0x765737, 0x815F3B);
-						case 2: cd(0x9F713D, 0xB27E44);
-						case 3: cd(0x6CB436, 0x79C93D);
-						default: cd(0, 0);
+					switch (GameLevel.createByIndex(i)) {
+						case GameLevel.water: cd(0x478FCF, 0x50A0E7);
+						case GameLevel.holes: cd(0x765737, 0x815F3B);
+						case GameLevel.walls: cd(0x9F713D, 0xB27E44);
+						case GameLevel.table, GameLevel.cover: cd(0x6CB436, 0x79C93D);
 					}
 					sf.setTarget();
 					Draw.clear(c1);
@@ -310,13 +323,15 @@ class Game {
 				md.endPrimitive();
 				ctx.levelOuter = md;
 				//
-				md = levelModels.cover;
+				md = levelModels.table;
 				f = 0.001; // have a real small overlap to avoid single pixels on a few spots.
 				addFloor(-(tbx - tbr + tbc + f), -tbr, tbx - tbr + tbc + f, tbr, 0);
 				cfor(i = -1, i <= 1, i += 2, {
+					md = levelModels.table;
 					addFloor(-tbx, (tbr - f) * i, tbx, (tby - tbr + f) * i, 0);
 					addFloor( -(tbx - tbr + f), tby * i, tbx - tbr + f, (tby - tbr) * i, 0);
 					// outer tops:
+					md = levelModels.cover;
 					addFloor(-(tbx - tbr), tby * i, tbx - tbr, (tby + tbr) * i, tbz);
 					addFloor((tbx + tbr + tbc) * i, -tbr * i, (tbx + tbp) * i, tbr * i, tbz);
 					addFloor(-(tbx + tbp), (tby + tbr) * i, (tbx + tbp), (tby + tbp) * i, tbz);
@@ -354,7 +369,7 @@ class Game {
 						if (holeY == 0) x1 += tbc * holeX;
 						y1 = tby * holeY;
 						// green part:
-						md = ctx.levelModels.cover;
+						md = ctx.levelModels.table;
 						z1 = 0;
 						cfor(i = 0, i < 2, i++, {
 							cfor(f = f1, f < f2, f += tbd, {
@@ -384,6 +399,7 @@ class Game {
 							if (i == 0) {
 								f = f1; f1 = f2; f2 = f + 360;
 								z1 = tbz;
+								md = levelModels.cover;
 							}
 						});
 						// walls:
@@ -643,6 +659,7 @@ class Game {
 			ctx.score = -1;
 		} // init
 		else { // retrieve
+			conf = ctx.conf;
 			player = ctx.player;
 			levelModels = ctx.levelModels;
 			levelTextures = ctx.levelTextures;
@@ -764,10 +781,18 @@ class Game {
 				}
 			}
 			if (Window.hasFocus) { // mouselook
-				x1 = Window.width / 2;
-				y1 = Window.height / 2;
-				x2 = (Window.mouseX - x1) * -0.2;
-				y2 = (Window.mouseY - y1) * 0.2;
+				x1 = Window.width >> 1;
+				y1 = Window.height >> 1;
+				x2 = Window.mouseX - x1;
+				y2 = Window.mouseY - y1;
+				if (osx) {
+					if (Window.fullscreen) {
+						Display.setMouse(x1, y1);
+					} else Window.setMouse(x1, y1 - (Window.height - Current.height));
+				} else Window.setMouse(x1, y1);
+				if (osx) y2 += 1;
+				x2 *= conf.spinX;
+				y2 *= conf.spinY;
 				if (player.ease >= 1) {
 					player.cueX = lerp(player.cueX, 0, 0.2) + x2 / 180;
 					player.cueY = lerp(player.cueY, 0, 0.2) + y2 / 90;
@@ -775,7 +800,6 @@ class Game {
 					player.tilt += y2;
 					player.tilt = clamp(player.tilt, -85, 85);
 				}
-				Window.setMouse(x1, y1);
 			}
 			if (player.bop > 0) {
 				player.bop -= 0.05;
@@ -824,8 +848,8 @@ class Game {
 			} // aim
 			if (block("XY accel")) {
 				vx = player.vx; vy = player.vy;
-				x2 = raw("keyboard_check")('D'.code) - raw("keyboard_check")('A'.code);
-				y2 = raw("keyboard_check")('W'.code) - raw("keyboard_check")('S'.code);
+				x2 = Keyboard.value(conf.keyRight) - Keyboard.value(conf.keyLeft);
+				y2 = Keyboard.value(conf.keyUp) - Keyboard.value(conf.keyDown);
 				z2 = 0.4 * (1 - aim * 0.4);
 				vx += ldx(z2, player.yaw) * y2;
 				vy += ldy(z2, player.yaw) * y2;
@@ -929,7 +953,7 @@ class Game {
 					player.vz -= raw("1 / 24");
 				} else player.jump = 8;
 				if (player.jump > 0) {
-					if (Keyboard.check(" ".code)) {
+					if (Keyboard.check(conf.keyJump)) {
 						player.vz = 1.1;
 						player.jump = 0;
 					} else player.jump -= 1;
@@ -998,7 +1022,7 @@ class Game {
 					dx *= df;
 					dy *= df;
 				}
-				if (df < 0.16) ball.bounces = 0;
+				if (df < 0.16 && ball.z <= ball.gz) ball.bounces = 0;
 				//}
 				if (dx != 0 || dy != 0) { // Knockback handling
 					x1 = ball.x; y1 = ball.y;
@@ -1220,6 +1244,11 @@ class Game {
 			Draw.color = -1;
 			//
 			cfor(i = 0, i < levelModels.length, i++, {
+				switch (GameLevel.createByIndex(i)) {
+					case GameLevel.cover: if (camData.z1 < tbz) continue;
+					case GameLevel.table: if (camData.z1 < 0) continue;
+					default:
+				}
 				levelModels[i].draw(0, 0, 0, levelTextures[i]);
 			});
 			//
@@ -1233,20 +1262,29 @@ class Game {
 				D3dContext.setCulling(true);
 				cfor(i = 0, i < n, i++, {
 					ball = balls[i];
-					D3dTransform.push();
-					f = ball.rad / ballRad * (40 / (40 + ball.z));
-					D3dTransform.scaleSame(f);
-					D3dTransform.rotateZ(0);
-					D3dTransform.translate(ball.x, ball.y, ball.gz + 0.04);
-					md.draw(0, 0, 0, Texture.none);
-					D3dTransform.pop();
+					if (ball.gz > tbWater) {
+						D3dTransform.push();
+						f = ball.rad / ballRad * (40 / (40 + ball.z));
+						D3dTransform.scaleSame(f);
+						D3dTransform.rotateZ(0);
+						D3dTransform.translate(ball.x, ball.y, ball.gz + 0.04);
+						md.draw(0, 0, 0, Texture.none);
+						D3dTransform.pop();
+					}
 				});
 				D3dContext.setCulling(false);
 				Draw.color = -1;
 				Draw.alpha = 1;
 			}
-			cfor(i = 0, i < n, i++, { // ball multipass
+			var pq = new PriorityQueue<Ball>();
+			x1 = camData.x1; y1 = camData.y1; z1 = camData.z1;
+			cfor(i = 0, i < n, i++, {
 				ball = balls[i];
+				pq.add(ball, sqr(ball.x - x1) + sqr(ball.y - y1) + sqr(ball.z - z1));
+			});
+			cfor(i = 0, i < n, i++, { // ball multipass
+				ball = pq.deleteMax();
+				if (osx && ball.z + ball.rad <= 0) continue;
 				f1 = ball.jump;
 				c1 = ctx.ballColors[ball.number];
 				c2 = Color.merge(c1, 0, 0.7);
@@ -1298,6 +1336,7 @@ class Game {
 					D3dTransform.pop();
 				});
 			});
+			pq.destroy();
 			Draw.color = -1;
 		}
 		if (!ctx.menu && player.health > 0 && player.ease >= 0.7 && block("Cue")) {
@@ -1558,12 +1597,23 @@ class Game {
 @:doc @:nativeGen typedef WaveData = {
 	?wave:Int, ?left:Int, ?spawn:Float, ?next:Float, 
 }
+/** Reflects the customizeable INI config file */
+@:doc @:nativeGen typedef GameConf = {
+	?keyUp:Int,
+	?keyDown:Int,
+	?keyLeft:Int,
+	?keyRight:Int,
+	?keyJump:Int,
+	?spinX:Float,
+	?spinY:Float,
+}
 
 /** Quirky structure for accessing the list of game's models/textures*/
 @:build(ArrayObject.build(GameLevel)) abstract GameLevelData<T>(ArrayList<T>) {
 	//
-	public var water:T;
 	public var holes:T;
+	public var water:T;
+	public var table:T;
 	public var walls:T;
 	public var cover:T;
 	//
@@ -1585,6 +1635,7 @@ class Game {
 
 /** Generates a GML enum with all game's persistent variables. */
 @:build(ArrayObject.build(GameCtx)) abstract GameCtxImpl(Grid<Dynamic>) {
+	public var conf:GameConf;
 	public var menu:Bool;
 	public var player:Player;
 	public var balls:ArrayList<Ball>;
